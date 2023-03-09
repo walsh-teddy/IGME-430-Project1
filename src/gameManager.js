@@ -646,7 +646,7 @@ const GameLeave = (request, response, data) => {
   }
 
   // Check if the user is in another game
-  if (users[userId].gameId !== gameId) { // They're already in a game
+  if (users[userId].gameId != gameId) { // They're already in a game
     // Send an error message
     const responseJSON = { message: 'User in another game', id: 'GameLeaveUserBusy' };
     return respondJSON(request, response, 404, responseJSON);
