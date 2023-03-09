@@ -59,7 +59,6 @@ const parseBody = (request, response, callback) => {
   });
 };
 
-  
 // Called every time the server recieves a request from the client
 const onRequest = (request, response) => {
   const parsedUrl = url.parse(request.url).pathname;
@@ -74,9 +73,9 @@ const onRequest = (request, response) => {
   } else if (urlStruct[method]) { // It is using GET or HEAD
     // Check if its URL is found
     if (urlStruct[method][parsedUrl]) { // It is found
-    urlStruct[method][parsedUrl](request, response);
+      urlStruct[method][parsedUrl](request, response);
     } else { // It is not found
-    urlStruct[method].notFound(request, response);
+      urlStruct[method].notFound(request, response);
     }
   } else { // It is not using GET or HEAD or the right url with POST
     // Default to GET.notFound
