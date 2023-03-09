@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Our simple HTTP server</title>
+  <link rel="stylesheet" type="text/css" href="/style.css">
+  
+  <script>
+    // Set up element variables
+    let curentUsername;
+    let usernameField;
+    let logInButton;
+    let logInError;
+    let createGameButton;
+    let gameList;
+    let joinGameError;
+    let leaveGameButton;
+    let player1Name;
+    let player1Score;
+    let player2Name;
+    let player2Score;
+    let gameState;
+    let player1Possesive;
+    let player1Throw;
+    let player2Possesive;
+    let player2Throw;
+    let results;
+    let throwField;
+    let throwButton;
+    let gameError;
+    let nextRoundButton;
+
+    // Set up game variables
+    let user = null;
+    let game = null;
+
+    const sendGetRequest = (url) => {
+      return fetch(url, {
+        method: 'get',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+    }
+
+    const sendPostRequest = (url , data) => {
+      return fetch(url, {
+        method: 'post',
+        headers: {
+          'Accept': 'application/json'
+        },
+        body: data
+      });
+    }
+
+    const extractJSON = async (response) => {
+      // Extract the JSON
+      const text = await response.text();
+      return JSON.parse(text);
+    }
+
+    const displayError = (message, element) => {
+      element.innerHTML = message;
+    }
+
+    const clearError = (element) => {
+      element.innerHTML = '';
+    }
+
+    const logIn = async () => {
+      // Send the post request
+      const data = `name=${usernameField.value}`;
+      const response = await sendPostRequest('users/join', data);
+
+      switch (response.status) {
+        case 200:
+        case 201:
+          // 201 and 200 both do the same thing
+          clearError(logInError);
+          usernameField.value = '';
+          user = await extractJSON(response);
+          curentUsername.innerHTML = user.name;
+          logInButton.disabled = true;
+          createGameButton.disabled = false;
+          break;
+        default:
+          // Display whatever error was returned
+          const error = await extractJSON(response);
+          displayError(error.message, logInError);
+          break;
+      }
+    }
+
+    const joinGame = async (id) => {
+      const data = `userId=${user.id}&gameId=${id}`;
+      const response = await sendPostRequest('game/join', data);
+
+      switch (response.status) {
+        case 200:
+        case 201:
+          clearError(joinGameError);
+          game = await extractJSON(response);
+          createGameButton.disabled = true;
+          displayGameState();
+          displayAvailableGames();
+          break;
+        default:
+          // Display whatever error was returned
+          const error = await extractJSON(response);
+          displayError(error.message, joinGameError);
+          break;
+      }
+    }
+
+    const displayAvailableGames = async () => {
+      // Send the fetch request
+      const response = await sendGetRequest('game/availableGames');
+
+      // Extract the JSON
+      const availableGames = await extractJSON(response);
+
+      // Clear the previous HTML
+      gameList.innerHTML = '';
+
+      // Make sure there are games
+      if (availableGames.length != 0) { // There were games
+        for (let i = 0; i < availableGames.length; i++) {
+          // Create the element
+          const gameInList = document.createElement('LI');
+          gameInList.innerHTML = `
+            <span>${availableGames[i].players[0].user.possesiveName} Game</span>
+            <button type="button">Join</button>
+          `;
+          
+          // Its only clickable if the user isn't already in a game
+          const button = gameInList.querySelector("button");
+          if (!game) { // The user isn't in a game
+            button.onclick = () => {
+              joinGame(availableGames[i].id)
+            }
+          } else { // The user isn't in a game yet
+            button.disabled = true;
+          }
+
+          // Add it to the page
+          gameList.appendChild(gameInList);
+        }
+      }
+      else { // There are no games
+        gameList.innerHTML = '<div>No available games</div>';
+      }
+
+      // Update the create game button
+      if (game || !user) { // The user is currently in a game
+        createGameButton.disabled = true;
+      } else { // The user is not in a game
+        createGameButton.disabled = false;
+      }
+    }
+
+    const createGame = async () => {
+      // Make sure the user is logged in
+      if (user) { // The user is logged in
+        const data = `userId=${user.id}`;
+        const response = await sendPostRequest('game/create', data);
+
+        switch (response.status) {
+          case 200:
+          case 201:
+            clearError(joinGameError);
+            game = await extractJSON(response);
+            createGameButton.disabled = true;
+            displayAvailableGames();
+            break;
+          default:
+            // Display whatever error was returned
+            const error = await extractJSON(response);
+            displayError(error.message, joinGameError);
+            break;
+        }
+      } else { // The user is not logged in yet
+        displayError("You must be logged in to create a game", joinGameError);
+      }
+    }
+
+    const displayGameState = async () => {
+      // Check if the user is in a game yet
+      if (!game) { // They are not
+        // Display the defaults
+
+        // Player 1 info
+        player1Name.innerHTML = 'nobody yet...';
+        player1Score.innerHTML = '0';
+        player1Possesive.innerHTML = 'player 1\'s'; 
+        player1Throw.innerHTML = '???';
+
+        // Player 2 info
+        player2Name.innerHTML = 'nobody yet...';
+        player2Score.innerHTML = '0';
+        player2Possesive.innerHTML = 'player 2\'s';
+        player2Throw.innerHTML = '???';
+
+        // General info
+        gameState.innerHTML = 'Waiting for game to start';
+        results.innerHTML = 'Waiting';
+
+        // Buttons
+        nextRoundButton.disabled = true;
+        throwButton.disabled = true;
+        leaveGameButton.disabled = true;
+        return;
+      }
+
+      // Update the game
+      const data = `gameId=${game.id}`;
+      const response = await sendPostRequest('game/state', data);
+
+      switch (response.status) {
+        case 200:
+        case 201:
+          break;
+        default:
+          // Display whatever error was returned
+          const error = await extractJSON(response);
+          displayError(error.message, gameError);
+          return;
+      }
+
+      // Update the game
+      game = await extractJSON(response);
+
+      // Find which player the user is
+      let playerIndex;
+      for (let i = 0; i < game.players.length; i ++) {
+        if (game.players[i].user.id === user.id) {
+          playerIndex = i;
+        }
+      }
+
+      // Display both players
+      if (game.players[0]) { // There is a player 1
+        player1Name.innerHTML = game.players[0].user.name;
+        player1Score.innerHTML = game.players[0].score;
+        player1Possesive.innerHTML = game.players[0].user.possesiveName;
+      }
+      if (game.players[1]) { // There is a player 2
+        player2Name.innerHTML = game.players[1].user.name;
+        player2Score.innerHTML = game.players[1].score;
+        player2Possesive.innerHTML = game.players[1].user.possesiveName;
+      }
+
+      // Display other things
+      player1Throw.innerHTML = game.player1Throw;
+      player2Throw.innerHTML = game.player2Throw;
+      gameState.innerHTML = game.state;
+      results.innerHTML = game.resultText;
+
+      // Update buttons
+
+      // Leave game button should be enableed if they're in a game
+      leaveGameButton.disabled = false;
+
+      // Next Round button should only be enabaled if they're at the end of a round and they havent already clicked it
+      nextRoundButton.disabled = (!game.roundEnd || game.players[playerIndex].wantNewRound);
+
+      // Throw button should only be enabled if its not the end of the round and they havent thrown something yet
+      throwButton.disabled = (game.roundEnd || game.players[playerIndex].throw !== ' ' || game.players.length != 2);
+    }
+
+    const throwSign = async () => {
+      // First make sure the user is in a game and is logged in
+      if (!user || !game) { // They are not logged in and/or not in a game
+        // Do nothing
+        return;
+      }
+
+      // Get the throw data 
+      let throwValue;
+      for (let i = 0; i < throwField.length; i++) {
+        if (throwField[i].checked) { // This button is checked
+          // Record its value
+          throwValue = throwField[i].value;
+        }
+      }
+
+      // Send the post request
+      const data = `userId=${user.id}&gameId=${game.id}&throw=${throwValue}`;
+      const response = await sendPostRequest('game/throw', data);
+
+      switch (response.status) {
+        case 200:
+        case 201:
+          clearError(gameError);
+          game = await extractJSON(response);
+          throwButton.disabled = true;
+          displayGameState();
+          break;
+        default:
+          // Display whatever error was returned
+          const error = await extractJSON(response);
+          displayError(error.message, gameError);
+          break;
+      }
+    }
+
+    const leaveGame = async () => {
+      // First make sure the user is in a game and is logged in
+      if (!user || !game) { // They are not logged in and/or not in a game
+        // Do nothing
+        return;
+      }
+
+      // Send the post request
+      const data = `userId=${user.id}&gameId=${game.id}`;
+      const response = await sendPostRequest('game/leave', data);
+
+      switch (response.status) {
+        case 200:
+          clearError(gameError);
+          user = await extractJSON(response);
+          game = null;
+          leaveGameButton.disabled = true;
+          throwButton.disabled = true;
+          nextRoundButton.disabled = true;
+          displayGameState();
+          displayAvailableGames();
+          break;
+        default:
+          // Display whatever error was returned
+          const error = await extractJSON(response);
+          displayError(error.message, gameError);
+          break;
+      }
+    }
+
+    const nextRound = async () => {
+      // First make sure the user is in a game and is logged in
+      if (!user || !game) { // They are not logged in and/or not in a game
+        // Do nothing
+        return;
+      }
+
+      // Send the post request
+      const data = `userId=${user.id}&gameId=${game.id}`;
+      const response = await sendPostRequest('game/ready', data);
+
+      switch (response.status) {
+        case 200:
+          clearError(gameError);
+          game = await extractJSON(response);
+          nextRoundButton.disabled = true;
+          displayGameState();
+          break;
+        default:
+          // Display whatever error was returned
+          const error = await extractJSON(response);
+          displayError(error.message, gameError);
+          break;
+      }
+    }
+
+    const init = () => {
+      // Fill in values for element variables
+      curentUsername = document.querySelector("#curentUsername");
+      usernameField = document.querySelector("#usernameField");
+      logInButton = document.querySelector("#logInButton");
+      logInError = document.querySelector("#logInError");
+      createGameButton = document.querySelector("#createGameButton");
+      gameList = document.querySelector("#gameList");
+      joinGameError = document.querySelector("#joinGameError");
+      leaveGameButton = document.querySelector("#leaveGameButton");
+      player1Name = document.querySelector("#player1Name");
+      player1Score = document.querySelector("#player1Score");
+      player2Name = document.querySelector("#player2Name");
+      player2Score = document.querySelector("#player2Score");
+      gameState = document.querySelector("#gameState");
+      player1Possesive = document.querySelector("#player1Possesive");
+      player1Throw = document.querySelector("#player1Throw");
+      player2Possesive = document.querySelector("#player2Possesive");
+      player2Throw = document.querySelector("#player2Throw");
+      results = document.querySelector("#results");
+      throwField = document.querySelectorAll(".throw");
+      throwButton = document.querySelector("#throwButton");
+      gameError = document.querySelector("#gameError");
+      nextRoundButton = document.querySelector("#nextRoundButton");
+
+      // Set up callback functions
+      logInButton.onclick = logIn;
+      createGameButton.onclick = createGame;
+      throwButton.onclick = throwSign;
+      leaveGameButton.onclick = leaveGame;
+      nextRoundButton.onclick = nextRound;
+
+      // Ask the server for updates every 2 seconds
+      const update = async () => {
+        // Ask for data
+        await displayAvailableGames();
+        await displayGameState();
+
+        // Call itself recursively
+        setTimeout (update, 2000);
+      }
+
+      // Call update for the first time
+      update();
+    }
+
+    window.onload = init;
+  </script>
+</head>
+<body>
+  <div>
+    <h1>Log In</h1>
+    <div>Logged in as: <span id="curentUsername">nobody yet...</span></div>
+    <div>Username: <input type="text" id="usernameField"> <button type="button" id="logInButton">Log In</button></div>
+    <div id="logInError"></div>
+  </div>
+  <div>
+    <h1>Available Games</h1>
+    <button type="button" id="createGameButton" disabled="true">Create Game</button>
+    <ul id="gameList">
+    </ul>
+    <div id="joinGameError"></div>
+  </div>
+  <div>
+    <h1>Game</h1>
+    
+    <div><strong>Player 1:</strong> <span id="player1Name">nobody yet...</span> (<span id="player1Score">0</span> pts)</div>
+    <div><strong>Player 2:</strong> <span id="player2Name">nobody yet...</span> (<span id="player2Score">0</span> pts)</div>
+    <br>
+    <div>State: <span id="gameState">Waiting for game to start</span></div>
+    <div><span id="player1Possesive">player 1's</span> throw: <span id="player1Throw">???</span></div>
+    <div><span id="player2Possesive">player 2's</span> throw: <span id="player2Throw">???</span></div>
+    <div>Results: <span id="results">Waiting</span></div>
+    <button type="button" id="nextRoundButton" disabled="true">Next Round</button>    
+    <br>
+    <div>
+      <input type="radio" id="throwRock" class="throw" name="throw" value="R" checked="true"> <label for="throwRock">Rock</label>
+      <input type="radio" id="throwPaper" class="throw" name="throw" value="P"> <label for="throwPaper">Paper</label>
+      <input type="radio" id="throwScissors" class="throw" name="throw" value="S"> <label for="throwScissors">Scissors</label>
+      <button type="button" id="throwButton" disabled="true">Throw</button>
+    </div>
+    <div>
+      <br>
+      <button type="button" id="leaveGameButton" disabled="true">Leave Game</button>
+      <div id="gameError"></div>
+    </div>
+  </div>
+</body>
+</html>
