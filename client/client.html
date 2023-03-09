@@ -3,7 +3,75 @@
 <head>
   <title>Our simple HTTP server</title>
   <link rel="stylesheet" type="text/css" href="/style.css">
-  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" 
+  integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w==" 
+  crossorigin="anonymous" referrerpolicy="no-referrer"
+  />
+  <script type="module">
+    // Coppied from my own IGME 330 projects
+    // Custom footer
+    const template = document.createElement("template");
+    template.innerHTML = `
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" 
+    integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w==" 
+    crossorigin="anonymous" referrerpolicy="no-referrer"
+    />
+    <div class="hero-footer box has-background-warning">
+    </div>
+    `;
+
+    // YOUR CODE GOES HERE
+    class CustomFooter extends HTMLElement{
+    constructor(){
+    super();
+
+    // Attatch a shadow DOM tree to this instance. This creates a shadow root for us
+    this.attachShadow({mode: "open"});
+
+    // Create the span element and add it to the shadow dom
+    this.shadowRoot.appendChild(template.content.cloneNode(true));
+
+    // This line of code will create an property named `span` for us, so that we don't have to keep calling this.shadowRoot.querySelector("span");
+    this.div = this.shadowRoot.querySelector("div");
+    }
+
+    // Watch the 2 data attributes
+    static get observedAttributes()
+    {
+    return ["data-name", "data-organization", "data-year", "data-link"];
+    }
+
+    attributeChangedCallback(attributeName, oldVal, newVal)
+    {
+    console.log(attributeName, oldVal, newVal);
+    this.render();
+    }
+
+    // Called when the component is added to the page
+    connectedCallback()
+    {
+    this.render();
+    }
+
+    disconnectedCallback(){}
+
+    // A helper method to display the values of the attributes
+    render()
+      {
+      const name = this.getAttribute('data-name') ? this.getAttribute('data-name') : "Teddy Walsh";
+      const organization = this.getAttribute('data-organization') ? this.getAttribute('data-organization') : "Rochester Institute of Technology";
+      const year = this.getAttribute('data-year') ? this.getAttribute('data-year') : "2023";
+      const link= this.getAttribute('data-link') ? this.getAttribute('data-link') : "https://people.rit.edu/tjw6911/";
+
+      this.div.innerHTML = `${name} - ${organization} - ${year} <br>
+      <a href="${link}">More of me <i class="fas fa-smile-beam"></i></a>`;
+      }
+    }
+
+    customElements.define('custom-footer', CustomFooter);
+  </script>
   <script>
     // Set up element variables
     let curentUsername;
@@ -128,7 +196,7 @@
           const gameInList = document.createElement('LI');
           gameInList.innerHTML = `
             <span>${availableGames[i].players[0].user.possesiveName} Game</span>
-            <button type="button">Join</button>
+            <button class="button">Join</button>
           `;
           
           // Its only clickable if the user isn't already in a game
@@ -246,6 +314,10 @@
         player2Name.innerHTML = game.players[1].user.name;
         player2Score.innerHTML = game.players[1].score;
         player2Possesive.innerHTML = game.players[1].user.possesiveName;
+      } else {
+        player2Name.innerHTML = 'Nobody yet...';
+        player2Score.innerHTML = '0';
+        player2Possesive.innerHTML = 'Player 2\'s';
       }
 
       // Display other things
@@ -408,42 +480,74 @@
   </script>
 </head>
 <body>
-  <div>
-    <h1>Log In</h1>
-    <div>Logged in as: <span id="curentUsername">nobody yet...</span></div>
-    <div>Username: <input type="text" id="usernameField"> <button type="button" id="logInButton">Log In</button></div>
-    <div id="logInError"></div>
-  </div>
-  <div>
-    <h1>Available Games</h1>
-    <button type="button" id="createGameButton" disabled="true">Create Game</button>
-    <ul id="gameList">
-    </ul>
-    <div id="joinGameError"></div>
-  </div>
-  <div>
-    <h1>Game</h1>
+  <main class="px-4 py-4 has-background-primary">
+    <div class="columns">
+          <!-- Left -->
+    <div class="column has-background-primary">
+
+      <div class="box">
+        <!-- Log In -->
+      <div class="box">
+        <h1 class="title">Log In</h1>
+        <div><strong>Logged in as:</strong> <span id="curentUsername">nobody yet...</span></div>
+        <div><strong>Username:</strong> <input type="text" id="usernameField"></div>
+        <button class="button has-text-weight-bold mt-3" id="logInButton">Log In</button>
+        <div id="logInError" class="has-text-danger"></div>
+      </div>
+
+      <!-- Available Games -->
+      <div class="box">
+        <h1 class="title">Available Games</h1>
+        <button class="button has-text-weight-bold mb-3" id="createGameButton" disabled="true">Create Game</button>
+        <ul id="gameList" class="box">
+        </ul>
+        <div id="joinGameError" class="has-text-danger"></div>
+      </div>
+      </div>
+
+    </div>
     
-    <div><strong>Player 1:</strong> <span id="player1Name">nobody yet...</span> (<span id="player1Score">0</span> pts)</div>
-    <div><strong>Player 2:</strong> <span id="player2Name">nobody yet...</span> (<span id="player2Score">0</span> pts)</div>
-    <br>
-    <div>State: <span id="gameState">Waiting for game to start</span></div>
-    <div><span id="player1Possesive">player 1's</span> throw: <span id="player1Throw">???</span></div>
-    <div><span id="player2Possesive">player 2's</span> throw: <span id="player2Throw">???</span></div>
-    <div>Results: <span id="results">Waiting</span></div>
-    <button type="button" id="nextRoundButton" disabled="true">Next Round</button>    
-    <br>
-    <div>
-      <input type="radio" id="throwRock" class="throw" name="throw" value="R" checked="true"> <label for="throwRock">Rock</label>
-      <input type="radio" id="throwPaper" class="throw" name="throw" value="P"> <label for="throwPaper">Paper</label>
-      <input type="radio" id="throwScissors" class="throw" name="throw" value="S"> <label for="throwScissors">Scissors</label>
-      <button type="button" id="throwButton" disabled="true">Throw</button>
+    <!-- Right -->
+    <div class="column has-background-primary">
+
+      <!-- Game -->
+      <div class="box">
+        <h1 class="title">Game</h1>
+
+        <button class="button has-text-weight-bold mb-3" id="leaveGameButton" disabled="true">Leave Game</button>
+        
+        <!-- Players -->
+        <div class="box">
+          <div><strong>Player 1:</strong> <span id="player1Name">nobody yet...</span> (<span id="player1Score">0</span> pts)</div>
+          <div><strong>Player 2:</strong> <span id="player2Name">nobody yet...</span> (<span id="player2Score">0</span> pts)</div>
+        </div>
+
+        <!-- Game Info -->
+        <div class="box">
+          <div><strong>State</strong>: <span id="gameState">Waiting for game to start</span></div>
+          <div><strong><span id="player1Possesive">player 1's</span> throw:</strong> <span id="player1Throw">???</span></div>
+          <div><strong><span id="player2Possesive">player 2's</span> throw:</strong> <span id="player2Throw">???</span></div>
+          <div><strong>Results:</strong> <span id="results">Waiting</span></div>
+        </div>
+
+        <!-- Throw -->
+        <div class="box">
+          <input type="radio" id="throwRock" class="throw" name="throw" value="R" checked="true"> <label for="throwRock">Rock</label>
+          <input type="radio" id="throwPaper" class="throw" name="throw" value="P"> <label for="throwPaper">Paper</label>
+          <input type="radio" id="throwScissors" class="throw" name="throw" value="S"> <label for="throwScissors">Scissors</label>
+          <button class="button has-text-weight-bold ml-3" id="throwButton" disabled="true">Throw</button>
+        </div>
+
+        <!--Buttons -->
+        <button class="button has-text-weight-bold" id="nextRoundButton" disabled="true">Next Round</button>
+
+        <div id="gameError" class="has-text-danger"></div>
+      </div>
+
     </div>
-    <div>
-      <br>
-      <button type="button" id="leaveGameButton" disabled="true">Leave Game</button>
-      <div id="gameError"></div>
+
     </div>
-  </div>
+    <custom-footer></custom-footer>
+  </main>
 </body>
 </html>
