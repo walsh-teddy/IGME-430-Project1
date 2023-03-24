@@ -10,9 +10,11 @@ let users = [
     gameId: null,
     winCount: 0,
     gameCount: 0,
+    throwCount: 0,
     rockThrows: 0,
     paperThrows: 0,
     scissorsThrows: 0,
+    loggedIn: true,
     created_at: 0, // Call Date.now()
     updated_at: 0, // Call Date.now()
     deleted_at: null, // If its null then its deleted
@@ -110,9 +112,11 @@ const UsersCreate = (request, response, name) => {
     gameId: null,
     winCount: 0,
     gameCount: 0,
+    throwCount: 0,
     rockThrows: 0,
     paperThrows: 0,
     scissorsThrows: 0,
+    loggedIn: true,
     created_at: rightNow,
     updated_at: rightNow,
     deleted_at: null,
@@ -126,6 +130,7 @@ const UsersCreate = (request, response, name) => {
 const UsersJoin = (request, response, data) => {
   // Extract the name from the data
   const { name } = data;
+
   // Make sure there is a name in it
   if (name === '') { // It is empty
     const responseJSON = { message: 'Name cannot be empty', id: 'UsersJoinMissingParams' };
@@ -135,8 +140,16 @@ const UsersJoin = (request, response, data) => {
   // Loop through each user and see if someone exists with that name
   for (let index = 0; index < users.length; index++) {
     if (users[index].name === name) { // A user with the same name was found
+      // Make sure they're not already logged in
+      if (users[index].loggedIn) { // The user is currently busy
+        // Send an error message
+        const responseJSON = { message: 'That name is currently used elsewhere', id: 'UserJoinUserBusy' };
+        return respondJSON(request, response, 404, responseJSON);
+      }
+
       // Send the client back the id for it to remember
       objectUpdated(users[index]);
+      users[index].loggedIn = true;
       console.log(users);
       return respondJSON(request, response, 200, users[index]);
     }
@@ -586,6 +599,7 @@ const GameThrow = (request, response, data) => {
       // Something has gone wrong
       break;
   }
+  users[userId].throwCount += 1;
   objectUpdated(users[userId]);
 
   // Update the game
@@ -743,6 +757,33 @@ const GameReadyNewRound = (request, response, data) => {
   return respondJSON(request, response, 200, games[gameId]);
 };
 
+const UsersLeave = (request, response, data) => {
+  // Extract the id
+  const { id } = data;
+
+  // Make sure a user at that Id exists
+  if (!users[id]) { // There was no user found
+    // Send an error message
+    const responseJSON = { message: 'User does not exist', id: 'UserLeaveBadId' };
+    return respondJSON(request, response, 404, responseJSON);
+  }
+
+  // Make sure the user isn't already logged out
+  if (!users[id].loggedIn) { // They were already logged out
+    const responseJSON = { message: 'User already logged out', id: 'UserLeaveUserGone' };
+    return respondJSON(request, response, 404, responseJSON);
+  }
+
+  // Mark the user as logged out
+  users[id].loggedIn = false;
+
+  // Have them leave the game they're in if they're in any
+  if (users[id].gameId !== null) { // They're currently in a game
+    return GameLeave(request, response, { userId: id, gameId: users[id].gameId });
+  }
+  return respondJSON(request, response, 200, users[id]);
+};
+
 const NotFound = (request, response) => {
   const responseJSON = { message: 'Url not found', id: 'badRequest' };
   return respondJSON(request, response, 404, responseJSON);
@@ -759,5 +800,6 @@ module.exports = {
   GameThrow,
   GameLeave,
   GameReadyNewRound,
+  UsersLeave,
   NotFound,
 };

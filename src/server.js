@@ -12,6 +12,9 @@ const urlStruct = {
   GET: {
     '/': htmlHandler.getIndex,
     '/style.css': htmlHandler.getCSS,
+    '/images/rock.png': htmlHandler.getImageRock,
+    '/images/paper.png': htmlHandler.getImagePaper,
+    '/images/scissors.png': htmlHandler.getImageScissors,
     '/game/availableGames': gameHandler.GameAvailableGames,
     notFound: gameHandler.NotFound,
   },
@@ -20,6 +23,7 @@ const urlStruct = {
   },
   POST: {
     '/users/join': gameHandler.UsersJoin,
+    '/users/leave': gameHandler.UsersLeave,
     '/users/stats': gameHandler.UserStats,
     '/game/create': gameHandler.GameCreate,
     '/game/join': gameHandler.GameJoin,
